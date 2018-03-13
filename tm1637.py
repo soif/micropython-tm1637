@@ -1,21 +1,29 @@
-# MicroPython TM1637 quad 7-segment LED display driver
+from time import sleep
 
-from micropython import const
-from machine import Pin
-from time import sleep_us, sleep_ms
+#### For Raspberri Pi #######################
+#from wiringpi import wiringPiSetupGpio, pinMode, digitalWrite, GPIO
+#wiringPiSetupGpio()
 
-TM1637_CMD1 = const(64)  # 0x40 data command
-TM1637_CMD2 = const(192) # 0xC0 address command
-TM1637_CMD3 = const(128) # 0x80 display control command
-TM1637_DSP_ON = const(8) # 0x08 display on
-TM1637_DELAY = const(10) # 10us delay between clk/dio pulses
-TM1637_MSB = const(128)  # msb is the decimal point or the colon depending on your display
+#### For OrangePi############################
+from pyA20.gpio import gpio as GPIO
+from pyA20.gpio.gpio import setcfg as pinMode
+from pyA20.gpio.gpio import output as digitalWrite
+GPIO.init()
+
+TM1637_CMD1		= 0x40	# 0x40 data command
+TM1637_CMD2		= 0xC0	# 0xC0 address command
+TM1637_CMD3		= 0x80	# 0x80 display control command
+TM1637_DSP_ON	= 0x08	# 0x08 display on
+TM1637_DELAY	= 10	# 10us delay between clk/dio pulses
+TM1637_MSB		= 128   # msb is the decimal point or the colon depending on your display
 
 # 0-9, a-z, blank, dash, star
 _SEGMENTS = bytearray(b'\x3F\x06\x5B\x4F\x66\x6D\x7D\x07\x7F\x6F\x77\x7C\x39\x5E\x79\x71\x3D\x76\x06\x1E\x76\x38\x55\x54\x3F\x73\x67\x50\x6D\x78\x3E\x1C\x2A\x76\x6E\x5B\x00\x40\x63')
 
 class TM1637(object):
+
     """Library for quad 7-segment LED modules based on the TM1637 LED driver."""
+
     def __init__(self, clk, dio, brightness=7):
         self.clk = clk
         self.dio = dio
@@ -24,25 +32,38 @@ class TM1637(object):
             raise ValueError("Brightness out of range")
         self._brightness = brightness
 
-        self.clk.init(Pin.OUT, value=0)
-        self.dio.init(Pin.OUT, value=0)
-        sleep_us(TM1637_DELAY)
+        pinMode(self.clk, GPIO.OUTPUT)
+        pinMode(self.dio, GPIO.OUTPUT)
+        digitalWrite(self.clk, 0)
+        digitalWrite(self.dio, 0)
+        self._bit_delay()
 
         self._write_data_cmd()
         self._write_dsp_ctrl()
 
+    def _bit_delay(self):
+        sleep( TM1637_DELAY / 1000000 )
+
     def _start(self):
-        self.dio(0)
-        sleep_us(TM1637_DELAY)
-        self.clk(0)
-        sleep_us(TM1637_DELAY)
+        #pinMode(self.dio, GPIO.OUTPUT)
+        digitalWrite(self.dio, 0)
+        self._bit_delay()
+
+        #pinMode(self.clk, GPIO.OUTPUT)
+        digitalWrite(self.clk, 0)
+        self._bit_delay()
 
     def _stop(self):
-        self.dio(0)
-        sleep_us(TM1637_DELAY)
-        self.clk(1)
-        sleep_us(TM1637_DELAY)
-        self.dio(1)
+        #pinMode(self.dio, GPIO.OUTPUT)
+        digitalWrite(self.dio, 0)
+        self._bit_delay()
+
+        #pinMode(self.clk, GPIO.OUTPUT)
+        digitalWrite(self.clk, 1)
+        self._bit_delay()
+
+        #pinMode(self.dio, GPIO.OUTPUT)
+        digitalWrite(self.dio, 1)
 
     def _write_data_cmd(self):
         # automatic address increment, normal mode
@@ -58,18 +79,29 @@ class TM1637(object):
 
     def _write_byte(self, b):
         for i in range(8):
-            self.dio((b >> i) & 1)
-            sleep_us(TM1637_DELAY)
-            self.clk(1)
-            sleep_us(TM1637_DELAY)
-            self.clk(0)
-            sleep_us(TM1637_DELAY)
-        self.clk(0)
-        sleep_us(TM1637_DELAY)
-        self.clk(1)
-        sleep_us(TM1637_DELAY)
-        self.clk(0)
-        sleep_us(TM1637_DELAY)
+            #pinMode(self.dio, GPIO.OUTPUT)
+            digitalWrite(self.dio, (b >> i) & 1 )
+            self._bit_delay()
+            
+            #pinMode(self.clk, GPIO.OUTPUT)
+            digitalWrite(self.clk, 1 )
+            self._bit_delay()
+            
+            #pinMode(self.clk, GPIO.OUTPUT)
+            digitalWrite(self.clk, 0 )
+            self._bit_delay()
+
+        #pinMode(self.clk, GPIO.OUTPUT)
+        digitalWrite(self.clk, 0 )
+        self._bit_delay()
+
+        #pinMode(self.clk, GPIO.OUTPUT)
+        digitalWrite(self.clk, 1 )
+        self._bit_delay()
+
+        #pinMode(self.clk, GPIO.OUTPUT)
+        digitalWrite(self.clk, 0 )
+        self._bit_delay()
 
     def brightness(self, val=None):
         """Set the display brightness 0-7."""
